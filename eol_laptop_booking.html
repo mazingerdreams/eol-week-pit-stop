@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ascent - Laptop EOL Refresh Week Booking</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e1b4b 0%, #2d1b69 100%);
+            padding: 50px 40px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '🏁';
+            position: absolute;
+            top: 10px;
+            left: 30px;
+            font-size: 24px;
+            opacity: 0.3;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .header::after {
+            content: '🏁';
+            position: absolute;
+            top: 10px;
+            right: 30px;
+            font-size: 24px;
+            opacity: 0.3;
+            animation: float 3s ease-in-out infinite 1.5s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 4px;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-subtitle {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .trophy-badge {
+            display: inline-block;
+            font-size: 2em;
+            margin-bottom: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-section {
+            margin-bottom: 40px;
+        }
+
+        .form-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1e1b4b;
+            font-size: 1.1em;
+        }
+
+        .form-section input[type="email"] {
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            background-color: white;
+        }
+
+        .form-section input[type="email"]:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-section input[type="email"]:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .form-section button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .calendar-section {
+            margin: 40px 0;
+        }
+
+        .calendar-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #1e1b4b;
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .day-column {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .slots-container {
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .time-slot {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .time-slot:hover:not(.full) {
+            border-color: #6366f1;
+            background: #f3f4f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+        }
+
+        .time-slot.available {
+            color: #059669;
+            border-color: #10b981;
+        }
+
+        .time-slot.available:hover {
+            background: #f0fdf4;
+            border-color: #059669;
+        }
+
+        .time-slot.booked {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #92400e;
+            cursor: default;
+        }
+
+        .time-slot.full {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .time-slot.full:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .time-slot.selected {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-color: #6366f1;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .slot-time {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .slot-availability {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
+        .confirmation-section {
+            display: none;
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .confirmation-section.show {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .confirmation-title {
+            font-size: 1.5em;
+            color: #059669;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .confirmation-details {
+            margin: 20px 0;
+            text-align: left;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .detail-value {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .ticket-number {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #6366f1;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+        }
+
+        .qr-code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .qr-code-container canvas {
+            display: block;
+            max-width: 250px;
+            width: auto;
+            height: auto;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 2px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+
+        .btn-google {
+            background: white;
+            color: #1f2937;
+            border: 2px solid #d1d5db;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-google:hover {
+            background: #f3f4f6;
+            border-color: #6366f1;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            color: #065f46;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 8px;
+            color: #1e40af;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            font-size: 0.95em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+
+        .legend-available .legend-color {
+            background: white;
+            border-color: #10b981;
+        }
+
+        .legend-booked .legend-color {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+
+        .legend-full .legend-color {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .calendar-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="trophy-badge">🏆</div>
+            <h1>THE ASCENT</h1>
+            <div class="header-subtitle">Laptop EOL Pit-Stop Week</div>
+            <p>🏁 Champion Booking Experience 🏁</p>
+        </div>
+
+        <div class="content">
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+
+            <div class="form-section">
+                <label for="emailInput">Enter Your Email</label>
+                <div style="display: flex; gap: 12px;">
+                    <input type="email" id="emailInput" placeholder="your.email@edreamsodigeo.com" style="flex: 1; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1em; transition: border-color 0.3s;">
+                    <button onclick="verifyEmail()" class="btn-primary" style="width: auto; white-space: nowrap;">Verify Email</button>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>🏁 Pit-Stop Protocol:</strong> Enter your credentials, verify access, then claim your pit-stop slot. Receive your VIP pass (QR code) + calendar invite. Multiple crew members welcome per slot (max 8 per stop). Quick service: 15-20 minutes. Champion experience guaranteed! ⭐
+            </div>
+
+            <div class="calendar-section" id="calendarSection" style="display: none;">
+                <div class="calendar-title" id="calendarTitle">🏁 Pit-Stop Schedule</div>
+
+                <div class="legend">
+                    <div class="legend-item legend-available">
+                        <div class="legend-color"></div>
+                        <span>Available</span>
+                    </div>
+                    <div class="legend-item legend-booked">
+                        <div class="legend-color"></div>
+                        <span>Your Booking</span>
+                    </div>
+                    <div class="legend-item legend-full">
+                        <div class="legend-color"></div>
+                        <span>Full (8/8)</span>
+                    </div>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+
+            <div class="confirmation-section" id="confirmationSection">
+                <div class="confirmation-title">🏆 Pit-Stop Reserved!</div>
+                <p style="font-size: 0.95em; color: #059669; margin-bottom: 1.5rem;">You've secured your champion pit-stop slot. VIP status activated! ⭐</p>
+
+                <div class="confirmation-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Crew Member</span>
+                        <span class="detail-value" id="confirmEmail"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Pit-Stop Window</span>
+                        <span class="detail-value" id="confirmDateTime"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Location</span>
+                        <span class="detail-value">Barcelona HQ - Pit Stop A</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Service Duration</span>
+                        <span class="detail-value">15-20 minutes (Express Service)</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">VIP Pass #</span>
+                        <span class="detail-value ticket-number" id="ticketNumber"></span>
+                    </div>
+                </div>
+
+                <div class="qr-code-container">
+                    <div id="qrcodeDiv"></div>
+                </div>
+
+                <div class="button-group">
+                    <a id="googleCalendarBtn" href="#" class="btn-primary" target="_blank">📅 Add to Google Calendar</a>
+                    <button onclick="printConfirmation()" class="btn-secondary">🖨️ Print Confirmation</button>
+                    <button onclick="resetBooking()" class="btn-secondary">✏️ Change Booking</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // User list
+        const users = [
+            'alba.vilella@edreamsodigeo.com',
+            'aylin.ciprut@edreamsodigeo.com',
+            'claudia.escarate@edreamsodigeo.com',
+            'david.mor@edreamsodigeo.com',
+            'francesca.impalli@edreamsodigeo.com',
+            'ignacio.demergasso@edreamsodigeo.com',
+            'ivan.aunon@edreamsodigeo.com',
+            'javier.escolano@edreamsodigeo.com',
+            'monica.tabernero@edreamsodigeo.com',
+            'zully.paez@edreamsodigeo.com',
+            'danilo.oliveira@edreamsodigeo.com',
+            'hugo.tavares@edreamsodigeo.com',
+            'toni.roldan@edreamsodigeo.com',
+            'adria.martinez@edreamsodigeo.com',
+            'alba.talaya@edreamsodigeo.com',
+            'albert.guirao@edreamsodigeo.com',
+            'alfredo.scaccialepre@edreamsodigeo.com',
+            'ana.ordonez@edreamsodigeo.com',
+            'anila.r@edreamsodigeo.com',
+            'arash.sammak@edreamsodigeo.com',
+            'ariadna.lopez@edreamsodigeo.com',
+            'arnau.salas@edreamsodigeo.com',
+            'breno.myrrha@edreamsodigeo.com',
+            'carles.garcia@edreamsodigeo.com',
+            'cindrella.samuel@edreamsodigeo.com',
+            'daniel.rabuga@edreamsodigeo.com',
+            'denise.giorgio@edreamsodigeo.com',
+            'dmytro.pylypenko@edreamsodigeo.com',
+            'ernesto.gonzalez@edreamsodigeo.com',
+            'ferney.caceres@edreamsodigeo.com',
+            'giuseppe.moretti@edreamsodigeo.com',
+            'hooman.rezvani@edreamsodigeo.com',
+            'ignasi.blanch@edreamsodigeo.com',
+            'javier.martorell@edreamsodigeo.com',
+            'javier.zolotarchuk@edreamsodigeo.com',
+            'jesus.berisa@edreamsodigeo.com',
+            'joao.castro@edreamsodigeo.com',
+            'jordi.bosch@edreamsodigeo.com',
+            'juan.paulich@edreamsodigeo.com',
+            'lasha.kvatashydze@edreamsodigeo.com',
+            'livia.carvalho@edreamsodigeo.com',
+            'marcela.mothe@edreamsodigeo.com',
+            'maria.prieto@edreamsodigeo.com',
+            'natalia.guerra@edreamsodigeo.com',
+            'niels.denboer@edreamsodigeo.com',
+            'patricia.zambrano@edreamsodigeo.com',
+            'pau.julio@edreamsodigeo.com',
+            'pau.martin@edreamsodigeo.com',
+            'raul.pineres@edreamsodigeo.com',
+            'rodolfo.urbano@edreamsodigeo.com',
+            'sarah.romero@edreamsodigeo.com',
+            'sergey.berdyshev@edreamsodigeo.com',
+            'shivam.gaur@edreamsodigeo.com',
+            'sofiia.kolisnyk@edreamsodigeo.com',
+            'susan.fogarty@edreamsodigeo.com',
+            'tomohiro.kosaka@edreamsodigeo.com',
+            'valeria.moscoso@edreamsodigeo.com',
+            'xavier.garate@edreamsodigeo.com',
+            'ahmed.ali@edreamsodigeo.com',
+            'alejandro.checa@edreamsodigeo.com',
+            'alena.ashchepkova@edreamsodigeo.com',
+            'alex.martinez@edreamsodigeo.com',
+            'alex.pujol@edreamsodigeo.com',
+            'antonio.fentanes@edreamsodigeo.com',
+            'david.garciap@edreamsodigeo.com',
+            'david.hernandez@edreamsodigeo.com',
+            'estefania.lopez@edreamsodigeo.com',
+            'iria.miguez@edreamsodigeo.com',
+            'jonatan.cerezo@edreamsodigeo.com',
+            'juanluis.salazar@edreamsodigeo.com',
+            'lei.ye@edreamsodigeo.com',
+            'manoel.capaverde@edreamsodigeo.com',
+            'nuria.pascual@edreamsodigeo.com',
+            'raul.lopezcarrasco@edreamsodigeo.com',
+            'renata.martins@edreamsodigeo.com',
+            'roberto.camara@edreamsodigeo.com',
+            'swane.nawaoui@edreamsodigeo.com',
+            'tamas.klein@edreamsodigeo.com',
+            'agustina.fernandez@edreamsodigeo.com',
+            'alberto.garcia@edreamsodigeo.com',
+            'alejandro.martin@edreamsodigeo.com',
+            'alex.jurado@edreamsodigeo.com',
+            'alex.santana@edreamsodigeo.com',
+            'carlos.huerta@edreamsodigeo.com',
+            'cedric.thevenet@edreamsodigeo.com',
+            'charles.santana@edreamsodigeo.com',
+            'daniel.montenegro@edreamsodigeo.com',
+            'dimitry.versteele@edreamsodigeo.com',
+            'giovanni.quattrocchi@edreamsodigeo.com',
+            'imad.akl@edreamsodigeo.com',
+            'jennifer.nieto@edreamsodigeo.com',
+            'joan.puig@edreamsodigeo.com',
+            'joaquin.garcia@edreamsodigeo.com',
+            'julia.lastra@edreamsodigeo.com',
+            'lina.forero@edreamsodigeo.com',
+            'matthieu.arrigault@edreamsodigeo.com',
+            'maurici.yagues@edreamsodigeo.com',
+            'micaela.charlo@edreamsodigeo.com',
+            'oriol.guitart@edreamsodigeo.com',
+            'paolo.russi@edreamsodigeo.com',
+            'victoria.cunha@edreamsodigeo.com',
+            'abilio.dias@edreamsodigeo.com',
+            'abilio.puente@edreamsodigeo.com',
+            'adria.bernal@edreamsodigeo.com',
+            'albert.torres@edreamsodigeo.com',
+            'alessandra.manfredi@edreamsodigeo.com',
+            'alina.oprea@edreamsodigeo.com',
+            'alma.martinez@edreamsodigeo.com',
+            'amelie.marinot@edreamsodigeo.com',
+            'ana.rodriguezz@edreamsodigeo.com',
+            'anders.gustavsson@edreamsodigeo.com',
+            'angela.marti@edreamsodigeo.com',
+            'anna.luong@edreamsodigeo.com',
+            'anna.wappenhans@edreamsodigeo.com',
+            'arantxa.rey@edreamsodigeo.com',
+            'aroa.santos@edreamsodigeo.com',
+            'aude.legrand@edreamsodigeo.com',
+            'audrey.passade@edreamsodigeo.com',
+            'beatriz.ferrer@edreamsodigeo.com',
+            'bibiana.beltran@edreamsodigeo.com',
+            'carola.dalessandro@edreamsodigeo.com',
+            'carolina.morales@edreamsodigeo.com',
+            'celine.charnal@edreamsodigeo.com',
+            'christelle.raze@edreamsodigeo.com',
+            'christopher.skapski@edreamsodigeo.com',
+            'clovis.costa@edreamsodigeo.com',
+            'cristina.palacio@edreamsodigeo.com',
+            'diana.canciu@edreamsodigeo.com',
+            'dick.arias@edreamsodigeo.com',
+            'diego.curbelo@edreamsodigeo.com',
+            'dimitrios.gkountis@edreamsodigeo.com',
+            'dmitry.slobodian@edreamsodigeo.com',
+            'dunia.lopez@edreamsodigeo.com',
+            'eduardo.lucena@edreamsodigeo.com',
+            'estefania.fernandez@edreamsodigeo.com',
+            'esther.delavega@edreamsodigeo.com',
+            'eva.panetta@edreamsodigeo.com',
+            'evelyn.martinez@edreamsodigeo.com',
+            'fernando.fernandez@edreamsodigeo.com',
+            'francesca.longhi@edreamsodigeo.com',
+            'gabriel.michelet@edreamsodigeo.com',
+            'gaia.aquilino@edreamsodigeo.com',
+            'graziella.bellina@edreamsodigeo.com',
+            'griselda.alvarez@edreamsodigeo.com',
+            'guillaume.teissonniere@edreamsodigeo.com',
+            'hennry.lopez@edreamsodigeo.com',
+            'hugo.montemor@edreamsodigeo.com',
+            'ivan.amaya@edreamsodigeo.com',
+            'jacopo.vido@edreamsodigeo.com',
+            'jarred.christos@edreamsodigeo.com',
+            'josep.miquel@edreamsodigeo.com',
+            'juanma.perez@edreamsodigeo.com',
+            'karin.grandberg@edreamsodigeo.com',
+            'kassandra.lopez@edreamsodigeo.com',
+            'kenza.jelloul@edreamsodigeo.com',
+            'kikelomo.bewaji@edreamsodigeo.com',
+            'laura.bernal@edreamsodigeo.com',
+            'laura.stam@edreamsodigeo.com',
+            'leonel.willian@edreamsodigeo.com',
+            'luca.pollice@edreamsodigeo.com',
+            'luciano.toselli@edreamsodigeo.com',
+            'luisml.domingues@edreamsodigeo.com',
+            'macarena.magadan@edreamsodigeo.com',
+            'maria.vazquez@edreamsodigeo.com',
+            'mariacarmen.sanchez@edreamsodigeo.com',
+            'marta.fabregas@edreamsodigeo.com',
+            'marta.ruiz@edreamsodigeo.com',
+            'martha.moccia@edreamsodigeo.com',
+            'melisa.santiago@edreamsodigeo.com',
+            'mireia.coba@edreamsodigeo.com',
+            'mireia.santasusagna@edreamsodigeo.com',
+            'nele.nittim@edreamsodigeo.com',
+            'nicole.martorano@edreamsodigeo.com',
+            'oksana.ivanova@edreamsodigeo.com',
+            'oriol.canellas@edreamsodigeo.com',
+            'pablo.sagnier@edreamsodigeo.com',
+            'paola.belsanti@edreamsodigeo.com',
+            'paola.parodi@edreamsodigeo.com',
+            'rafael.dasilva@edreamsodigeo.com',
+            'rocio.tejada@edreamsodigeo.com',
+            'romain.sillaro@edreamsodigeo.com',
+            'sandra.lorenzo@edreamsodigeo.com',
+            'sara.delcerro@edreamsodigeo.com',
+            'sara.gobbini@edreamsodigeo.com',
+            'sara.joyera@edreamsodigeo.com',
+            'sergio.ortiz@edreamsodigeo.com',
+            'sergio.pinto@edreamsodigeo.com',
+            'sherina.straehle@edreamsodigeo.com',
+            'simao.silva@edreamsodigeo.com',
+            'sonia.vicente@edreamsodigeo.com',
+            'sonia.zollet@edreamsodigeo.com',
+            'stephany.garcia@edreamsodigeo.com',
+            'stephen.strydom@edreamsodigeo.com',
+            'stuart.benson@edreamsodigeo.com',
+            'susana.chamocho@edreamsodigeo.com',
+            'tarja.brinkmeier@edreamsodigeo.com',
+            'tomas.barbagelata@edreamsodigeo.com',
+            'vanessa.perez@edreamsodigeo.com',
+            'xavier.boisseau@edreamsodigeo.com',
+            'zarila.meftah@edreamsodigeo.com',
+            'zeynel.kargin@edreamsodigeo.com',
+            'adriana.giordani@edreamsodigeo.com',
+            'agustin.abdala@edreamsodigeo.com',
+            'agustin.galache@edreamsodigeo.com',
+            'agustin.olcese@edreamsodigeo.com',
+            'ahmed.raza@edreamsodigeo.com',
+            'aina.lloret@edreamsodigeo.com',
+            'aina.sole@edreamsodigeo.com',
+            'alba.coci@edreamsodigeo.com',
+            'alba.molina@edreamsodigeo.com',
+            'alba.pacheco@edreamsodigeo.com',
+            'alejandro.villegas@edreamsodigeo.com',
+            'alexis.claret@edreamsodigeo.com',
+            'alicia.gonzalez@edreamsodigeo.com',
+            'amine.faitas@edreamsodigeo.com',
+            'ana.costa@edreamsodigeo.com',
+            'ana.martos@edreamsodigeo.com',
+            'andrea.cannata@edreamsodigeo.com',
+            'anna.brufau@edreamsodigeo.com',
+            'antoine.lorette@edreamsodigeo.com',
+            'arnau.llobet@edreamsodigeo.com',
+            'aroa.abad@edreamsodigeo.com',
+            'bart.nijenhuis@edreamsodigeo.com',
+            'beata.kus@edreamsodigeo.com',
+            'berta.aran@edreamsodigeo.com',
+            'camille.molina@edreamsodigeo.com',
+            'candela.gamero@edreamsodigeo.com',
+            'carlo.marzorati@edreamsodigeo.com',
+            'carlota.lopezreig@edreamsodigeo.com',
+            'carolina.rengifo@edreamsodigeo.com',
+            'celia.armand@edreamsodigeo.com',
+            'charlotte.legall@edreamsodigeo.com',
+            'christian.kaspar@edreamsodigeo.com',
+            'claudia.torrents@edreamsodigeo.com',
+            'cristina.prat@edreamsodigeo.com',
+            'daniel.francis@edreamsodigeo.com',
+            'daniel.ortega@edreamsodigeo.com',
+            'daniela.diaz@edreamsodigeo.com',
+            'daphine.barbosa@edreamsodigeo.com',
+            'david.cordero@edreamsodigeo.com',
+            'davinia.martin@edreamsodigeo.com',
+            'deborah.rodriguez@edreamsodigeo.com',
+            'diana.xifre@edreamsodigeo.com',
+            'dieter.fotino@edreamsodigeo.com',
+            'elena.briz@edreamsodigeo.com',
+            'elena.casanova@edreamsodigeo.com',
+            'elisabet.abad@edreamsodigeo.com',
+            'elisabeth.jara@edreamsodigeo.com',
+            'emilia.carbo@edreamsodigeo.com',
+            'emma.poitou@edreamsodigeo.com',
+            'enrique.sendagorta@edreamsodigeo.com',
+            'eric.contreras@edreamsodigeo.com',
+            'ester.marco@edreamsodigeo.com',
+            'ezequiel.casciaro@edreamsodigeo.com',
+            'fabio.barba@edreamsodigeo.com',
+            'florencia.barone@edreamsodigeo.com',
+            'florent.sibeaux@edreamsodigeo.com',
+            'gabriel.garcia@edreamsodigeo.com',
+            'gabriela.medina@edreamsodigeo.com',
+            'gemma.prenafeta@edreamsodigeo.com',
+            'gina.gisbert@edreamsodigeo.com',
+            'giuseppe.caliendo@edreamsodigeo.com',
+            'guillermo.freijeiro@edreamsodigeo.com',
+            'helena.munoz@edreamsodigeo.com',
+            'ines.zaurin@edreamsodigeo.com',
+            'iria.dapena@edreamsodigeo.com',
+            'isaac.barber@edreamsodigeo.com',
+            'isabel.stegemeijer@edreamsodigeo.com',
+            'javier.guirao@edreamsodigeo.com',
+            'jennyfer.mazzola@edreamsodigeo.com',
+            'jesus.bastida@edreamsodigeo.com',
+            'jesus.ucendo@edreamsodigeo.com',
+            'joao.moreira@edreamsodigeo.com',
+            'jonathan.arenas@edreamsodigeo.com',
+            'jordi.cobo@edreamsodigeo.com',
+            'jordi.motllo@edreamsodigeo.com',
+            'jose.antonio@edreamsodigeo.com',
+            'joseraul.gonzalez@edreamsodigeo.com',
+            'juan.echeguia@edreamsodigeo.com',
+            'juan.sarrado@edreamsodigeo.com',
+            'judith.rubio@edreamsodigeo.com',
+            'judith.vidal@edreamsodigeo.com',
+            'julia.altarriba@edreamsodigeo.com',
+            'karina.kubis@edreamsodigeo.com',
+            'katalin.vegh@edreamsodigeo.com',
+            'kathryn.johnson@edreamsodigeo.com',
+            'laia.bajona@edreamsodigeo.com',
+            'laia.sole@edreamsodigeo.com',
+            'laura.dragunsky@edreamsodigeo.com',
+            'leticia.martin@edreamsodigeo.com',
+            'lindsey.auty@edreamsodigeo.com',
+            'lionel.matias@edreamsodigeo.com',
+            'lorea.arrizabalaga@edreamsodigeo.com',
+            'lorena.garciag@edreamsodigeo.com',
+            'lorena.manzano@edreamsodigeo.com',
+            'lorena.serrano@edreamsodigeo.com',
+            'lorenzo.lopez@edreamsodigeo.com',
+            'louise.mortleman@edreamsodigeo.com',
+            'lucia.arduin@edreamsodigeo.com',
+            'maksym.khomenko@edreamsodigeo.com',
+            'mandi.perez@edreamsodigeo.com',
+            'marc.contijoch@edreamsodigeo.com',
+            'marc.sune@edreamsodigeo.com',
+            'marcela.anahi@edreamsodigeo.com',
+            'margarita.farinas@edreamsodigeo.com',
+            'marta.alvarez@edreamsodigeo.com',
+            'marta.codina@edreamsodigeo.com',
+            'marta.malecka@edreamsodigeo.com',
+            'martina.abbate@edreamsodigeo.com',
+            'mary.mckenna@edreamsodigeo.com',
+            'mate.vago@edreamsodigeo.com',
+            'mathilde.baas@edreamsodigeo.com',
+            'mercedes.reina@edreamsodigeo.com',
+            'metantuan.temmar@edreamsodigeo.com',
+            'miguel.delcampo@edreamsodigeo.com',
+            'miquel.garcia@edreamsodigeo.com',
+            'miquel.moll@edreamsodigeo.com',
+            'miriam.olmos@edreamsodigeo.com',
+            'monica.fidalgo@edreamsodigeo.com',
+            'natalia.abusharar@edreamsodigeo.com',
+            'nicolas.madeo@edreamsodigeo.com',
+            'ninsa.nazaruddin@edreamsodigeo.com',
+            'noel.maya@edreamsodigeo.com',
+            'nuria.valenti@edreamsodigeo.com',
+            'olga.shvetcova@edreamsodigeo.com',
+            'oriol.pifarre@edreamsodigeo.com',
+            'oscar.sanchezp@edreamsodigeo.com',
+            'pablo.caspers@edreamsodigeo.com',
+            'pablo.furlan@edreamsodigeo.com',
+            'pablo.martos@edreamsodigeo.com',
+            'pablo.norte@edreamsodigeo.com',
+            'paola.haiat@edreamsodigeo.com',
+            'patricia.puy@edreamsodigeo.com',
+            'patricia.ramos@edreamsodigeo.com',
+            'pau.llado@edreamsodigeo.com',
+            'paula.canavesi@edreamsodigeo.com',
+            'paula.capelli@edreamsodigeo.com',
+            'paula.guijarro@edreamsodigeo.com',
+            'pedro.suarez@edreamsodigeo.com',
+            'pep.sanz@edreamsodigeo.com',
+            'pierre.herlin@edreamsodigeo.com',
+            'pietro.fogli@edreamsodigeo.com',
+            'pol.guasch@edreamsodigeo.com',
+            'raul.franco@edreamsodigeo.com',
+            'roberto.grigatti@edreamsodigeo.com',
+            'roman.varady@edreamsodigeo.com',
+            'rosa.garcia@edreamsodigeo.com',
+            'ruben.reina@edreamsodigeo.com',
+            'ruth.montesinos@edreamsodigeo.com',
+            'sandrine.mendes@edreamsodigeo.com',
+            'sara.ceperuelo@edreamsodigeo.com',
+            'sara.manzoni@edreamsodigeo.com',
+            'sara.merino@edreamsodigeo.com',
+            'sara.nunezc@edreamsodigeo.com',
+            'sarah.smadja@edreamsodigeo.com',
+            'sergi.panes@edreamsodigeo.com',
+            'silvia.martinez@edreamsodigeo.com',
+            'silvio.villegas@edreamsodigeo.com',
+            'susanna.cerrato@edreamsodigeo.com',
+            'sylwia.trebiecka@edreamsodigeo.com',
+            'tere.bel@edreamsodigeo.com',
+            'toufik.cheikh@edreamsodigeo.com',
+            'victor.carrillo@edreamsodigeo.com',
+            'victor.sotillo@edreamsodigeo.com',
+            'violeta.schmidt@edreamsodigeo.com',
+            'xavier.cabanas@edreamsodigeo.com',
+            'yudelka.camilo@edreamsodigeo.com',
+            'yurena.mata@edreamsodigeo.com',
+            'yusra.garrich@edreamsodigeo.com',
+            'zaida.salie@edreamsodigeo.com',
+            'sebastian.blanco@edreamsodigeo.com',
+            'agustin.lidon@edreamsodigeo.com',
+            'alex.lledo@edreamsodigeo.com',
+            'denys.holyshevskyi@edreamsodigeo.com',
+            'dionisio.gimenez@edreamsodigeo.com',
+            'eleonor.acosta@edreamsodigeo.com',
+            'gabriel.cerda@edreamsodigeo.com',
+            'hector.espi@edreamsodigeo.com',
+            'miguelangel.sanchez@edreamsodigeo.com',
+            'raul.sanchez@edreamsodigeo.com',
+            'sergio.cervera@edreamsodigeo.com',
+            'vicente.herrera@edreamsodigeo.com',
+            'carlos.buendia@edreamsodigeo.com',
+            'gabor.kaloczi@edreamsodigeo.com',
+            'laszlo.hajas@edreamsodigeo.com',
+            'katrin.colombet@edreamsodigeo.com',
+            'ronja.neuwirth@edreamsodigeo.com',
+            'bettina.lemessier@edreamsodigeo.com',
+            'franziska.kretschmer@edreamsodigeo.com',
+            'marnix.aarts@edreamsodigeo.com',
+            'olaf.rose@edreamsodigeo.com',
+            'conrad.svard@edreamsodigeo.com',
+            'david.delaroz@edreamsodigeo.com',
+            'antonia.vallejo@edreamsodigeo.com',
+            'fernando.palacios@edreamsodigeo.com',
+            'mauro.caruso@edreamsodigeo.com',
+            'salvador.crespo@edreamsodigeo.com',
+            'javier.puche@edreamsodigeo.com',
+            'juanjose.lopez@edreamsodigeo.com',
+            'carles.romero@edreamsodigeo.com',
+            'dani.palacios@edreamsodigeo.com',
+            'sergio.pascual@edreamsodigeo.com',
+            'alan.casas@edreamsodigeo.com',
+            'alvaro.delaflor@edreamsodigeo.com',
+            'alvaro.losada@edreamsodigeo.com',
+            'alvaro.martin@edreamsodigeo.com',
+            'antero.serrano@edreamsodigeo.com',
+            'carlos.garnacho@edreamsodigeo.com',
+            'david.arevalo@edreamsodigeo.com',
+            'diego.garcia@edreamsodigeo.com',
+            'dmitry.stepaniuk@edreamsodigeo.com',
+            'elisa.gobierno@edreamsodigeo.com',
+            'eren.celik@edreamsodigeo.com',
+            'esteban.bellegarde@edreamsodigeo.com',
+            'jhonathan.lozada@edreamsodigeo.com',
+            'johanna.chan@edreamsodigeo.com',
+            'jorge.sosa@edreamsodigeo.com',
+            'jose.pereira@edreamsodigeo.com',
+            'joseantonio.romero@edreamsodigeo.com',
+            'manuel.quindimil@edreamsodigeo.com',
+            'marina.valle@edreamsodigeo.com',
+            'miguel.roldan@edreamsodigeo.com',
+            'miriam.valero@edreamsodigeo.com',
+            'pilar.millan@edreamsodigeo.com',
+            'raul.gamez@edreamsodigeo.com',
+            'santiago.carretero@edreamsodigeo.com',
+            'andrea.martinoli@edreamsodigeo.com',
+            'andrea.rodriguezg@edreamsodigeo.com',
+            'angel.castro@edreamsodigeo.com',
+            'german.franco@edreamsodigeo.com',
+            'maria.gil@edreamsodigeo.com',
+            'alberto.casas@edreamsodigeo.com',
+            'cristina.estevez@edreamsodigeo.com',
+            'fernando.ribeiro@edreamsodigeo.com',
+            'idoya.granda@edreamsodigeo.com',
+            'martina.tancredi@edreamsodigeo.com',
+            'tania.garcia@edreamsodigeo.com',
+            'carla.krieger@edreamsodigeo.com',
+            'edan.crees@edreamsodigeo.com',
+            'elsie.diez@edreamsodigeo.com',
+            'fernando.huertas@edreamsodigeo.com',
+            'juan.nicolas@edreamsodigeo.com',
+            'sara.concejo@edreamsodigeo.com',
+            'susana.garcia@edreamsodigeo.com',
+            'alberto.cogliati@edreamsodigeo.com',
+            'alessandra.laderchi@edreamsodigeo.com',
+            'alessandro.dionisi@edreamsodigeo.com',
+            'andrea.antonetti@edreamsodigeo.com',
+            'andrea.colussi@edreamsodigeo.com',
+            'andrea.tugnoli@edreamsodigeo.com',
+            'anton.vorozhbit@edreamsodigeo.com',
+            'antonio.dellava@edreamsodigeo.com',
+            'filippo.favali@edreamsodigeo.com',
+            'francesco.corbi@edreamsodigeo.com',
+            'giuseppe.giacoppo@edreamsodigeo.com',
+            'gualtiero.frigerio@edreamsodigeo.com',
+            'lorenzo.rossi@edreamsodigeo.com',
+            'luca.gandini@edreamsodigeo.com',
+            'maracamilla.consorti@edreamsodigeo.com',
+            'marco.tabacchino@edreamsodigeo.com',
+            'nicola.palumbo@edreamsodigeo.com',
+            'nicolo.pasini@edreamsodigeo.com',
+            'paolo.panarese@edreamsodigeo.com',
+            'riccardo.muzzi@edreamsodigeo.com',
+            'stefano.curcio@edreamsodigeo.com',
+            'stefano.dicesare@edreamsodigeo.com',
+            'walter.nuccio@edreamsodigeo.com',
+            'yessine.kebir@edreamsodigeo.com',
+            'daniele.colantonio@edreamsodigeo.com',
+            'enrico.previdi@edreamsodigeo.com',
+            'fabio.campardo@edreamsodigeo.com',
+            'natasha.bech@edreamsodigeo.com',
+            'pierpaolo.sorriento@edreamsodigeo.com',
+            'simone.biglieri@edreamsodigeo.com',
+            'hugo.cardoso@edreamsodigeo.com',
+            'rui.duarte@edreamsodigeo.com',
+            'david.sousa@edreamsodigeo.com',
+            'fabiano.borba@edreamsodigeo.com',
+            'gabriela.giraud@edreamsodigeo.com',
+            'jadson.barbosa@edreamsodigeo.com',
+            'joel.silva@edreamsodigeo.com',
+            'kevin.domingues@edreamsodigeo.com',
+            'luis.eduardo@edreamsodigeo.com',
+            'luis.fernandes@edreamsodigeo.com',
+            'mary.branco@edreamsodigeo.com',
+            'pedro.azevedo@edreamsodigeo.com',
+            'pedro.ferreira@edreamsodigeo.com',
+            'sergey.shumilin@edreamsodigeo.com',
+            'arthur.veloso@edreamsodigeo.com',
+            'guilherme.paciulli@edreamsodigeo.com',
+            'gustavo.freitas@edreamsodigeo.com',
+            'joao.alves@edreamsodigeo.com',
+            'pavels.saikins@edreamsodigeo.com',
+            'robson.santos@edreamsodigeo.com',
+            'miriam.miranda@edreamsodigeo.com',
+            'antonieta.ponceleao@edreamsodigeo.com',
+            'jose.nogueira@edreamsodigeo.com',
+            'attila.fodor@edreamsodigeo.com',
+            'emelynelyvia.postdam@edreamsodigeo.com',
+            'jeremy.terrasson@edreamsodigeo.com',
+            'melanie.cherruault@edreamsodigeo.com',
+            'pauline.didier@edreamsodigeo.com',
+            'vanessa.mariejoseph@edreamsodigeo.com',
+            'charles.derynck@edreamsodigeo.com',
+            'elodie.thiriet@edreamsodigeo.com'
+        ];
+
+        // Firebase Configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyAA9ftC2YTtUYSxVUeZlh_kb6cPG3n9WWg",
+          authDomain: "eol-booking-adcaf.firebaseapp.com",
+          projectId: "eol-booking-adcaf",
+          storageBucket: "eol-booking-adcaf.firebasestorage.app",
+          messagingSenderId: "1008961593165",
+          appId: "1:1008961593165:web:1f00b7f0a95ed201c1e104",
+          measurementId: "G-97G0JKLWXL"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Calendar configuration
+        const eventDates = [
+            { date: '2026-10-13', day: 'Tuesday', hours: 8 },
+            { date: '2026-10-14', day: 'Wednesday', hours: 8 },
+            { date: '2026-10-15', day: 'Thursday', hours: 8 },
+            { date: '2026-10-16', day: 'Friday', hours: 7 }
+        ];
+
+        let bookings = {};
+        let currentEmail = '';
+        let selectedSlot = null;
+
+        // Initialize
+        function init() {
+            document.getElementById('emailInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    verifyEmail();
+                }
+            });
+
+            // Load bookings from Firestore and set up real-time listener
+            db.collection('bookings').onSnapshot(snapshot => {
+                bookings = {};
+                snapshot.forEach(doc => {
+                    bookings[doc.id] = doc.data();
+                });
+                if (currentEmail) {
+                    renderCalendar();
+                }
+            });
+        }
+
+        function formatUserName(email) {
+            const namePart = email.split('@')[0];
+            const words = namePart.split('.');
+            return words.map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+
+
+        function verifyEmail() {
+            const emailInput = document.getElementById('emailInput');
+            const email = emailInput.value.trim().toLowerCase();
+
+            if (!email) {
+                showError('Please enter your email address');
+                return;
+            }
+
+            if (!users.includes(email)) {
+                showError('This email is not in our authorized list. Please check and try again.');
+                return;
+            }
+
+            currentEmail = email;
+            const userName = formatUserName(email);
+
+            document.getElementById('calendarSection').style.display = 'block';
+            document.getElementById('calendarTitle').innerHTML = `🏁 Pit-Stop Schedule - <strong style="color: #8b5cf6;">${userName}</strong> ⭐`;
+
+            renderCalendar();
+            emailInput.disabled = true;
+            document.querySelector('button[onclick="verifyEmail()"]').disabled = true;
+
+            if (bookings[currentEmail]) {
+                showExistingBooking(bookings[currentEmail]);
+            }
+
+            showSuccess(`Email verified! You can now select your booking slot.`);
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            eventDates.forEach(dayConfig => {
+                const dayColumn = document.createElement('div');
+                dayColumn.className = 'day-column';
+
+                const header = document.createElement('div');
+                header.className = 'day-header';
+                const dayNumber = dayConfig.date.split('-')[2];
+                const dayIcon = ['🏁', '🏁', '🏁', '🏁'][eventDates.indexOf(dayConfig)] || '🏁';
+                header.innerHTML = `<div style="font-weight: 700; font-size: 1.1em; margin-bottom: 4px;">${dayIcon} ${dayConfig.day}</div><div style="font-size: 0.9em; opacity: 0.9;">Oct ${dayNumber}</div>`;
+                dayColumn.appendChild(header);
+
+                const slotsContainer = document.createElement('div');
+                slotsContainer.className = 'slots-container';
+
+                for (let hour = 8; hour < 8 + dayConfig.hours; hour++) {
+                    const timeString = `${hour.toString().padStart(2, '0')}:00`;
+                    const slotKey = `${dayConfig.date}_${timeString}`;
+                    const slotCount = Object.values(bookings).filter(b => b.slot === slotKey).length;
+                    const userBooked = bookings[currentEmail] && bookings[currentEmail].slot === slotKey;
+
+                    const slot = document.createElement('div');
+                    slot.className = 'time-slot';
+
+                    if (userBooked) {
+                        slot.classList.add('booked');
+                    } else if (slotCount >= 8) {
+                        slot.classList.add('full');
+                    } else {
+                        slot.classList.add('available');
+                    }
+
+                    slot.innerHTML = `
+                        <div class="slot-time">${timeString}</div>
+                        <div class="slot-availability">${slotCount}/8 booked</div>
+                    `;
+
+                    if (!userBooked && slotCount < 8) {
+                        slot.onclick = () => selectSlot(dayConfig.date, timeString, dayConfig.day);
+                    }
+
+                    slotsContainer.appendChild(slot);
+                }
+
+                dayColumn.appendChild(slotsContainer);
+                grid.appendChild(dayColumn);
+            });
+        }
+
+
+        function selectSlot(date, time, day) {
+            if (!currentEmail) {
+                showError('Please select your email first');
+                return;
+            }
+
+            const slotKey = `${date}_${time}`;
+            const slotCount = Object.values(bookings).filter(b => b.slot === slotKey).length;
+
+            if (slotCount >= 8) {
+                showError('This slot is now full. Please choose another time.');
+                renderCalendar();
+                return;
+            }
+
+            selectedSlot = { date, time, day, slot: slotKey };
+
+            // Save to Firebase
+            db.collection('bookings').doc(currentEmail).set({
+                email: currentEmail,
+                name: formatUserName(currentEmail),
+                date: date,
+                time: time,
+                slot: slotKey,
+                bookedAt: new Date().toISOString()
+            }).then(() => {
+                bookings[currentEmail] = selectedSlot;
+                showConfirmation(selectedSlot);
+                renderCalendar();
+            }).catch(error => {
+                showError('Error saving booking: ' + error.message);
+            });
+        }
+
+        function showExistingBooking(booking) {
+            showConfirmation(booking);
+        }
+
+        function showConfirmation(booking) {
+            const ticketNumber = `2026-BCN-${currentEmail.split('.')[0].toUpperCase()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+            document.getElementById('confirmEmail').textContent = currentEmail;
+            document.getElementById('confirmDateTime').textContent = `${booking.day}, Oct ${booking.date.split('-')[2]} at ${booking.time}`;
+            document.getElementById('ticketNumber').textContent = ticketNumber;
+
+            // Generate QR code
+            const qrcodeDiv = document.getElementById('qrcodeDiv');
+            qrcodeDiv.innerHTML = '';
+            new QRCode(qrcodeDiv, {
+                text: `Ticket: ${ticketNumber}\nEmail: ${currentEmail}\nSlot: ${booking.date} ${booking.time}\nLocation: Barcelona HQ - Pit Stop A`,
+                width: 200,
+                height: 200,
+                colorDark: '#1e1b4b',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Generate Google Calendar link with warehouse_13 as guest
+            const startDate = `${booking.date.replace(/-/g, '')}T${booking.time.replace(':', '')}00`;
+            const endDate = `${booking.date.replace(/-/g, '')}T${(parseInt(booking.time.split(':')[0]) + 1).toString().padStart(2, '0')}0000`;
+
+            const eventTitle = `eDO%20Laptop%20EOL%20Pit-Stop%20-%20${currentEmail.split('@')[0]}`;
+            const eventDetails = `Ticket:%20${ticketNumber}`;
+
+            const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&location=Barcelona%20HQ%20-%20Pit%20Stop%20A&details=${eventDetails}&add=warehouse_13@edreamsodigeo.com`;
+
+            document.getElementById('googleCalendarBtn').href = calendarUrl;
+            document.getElementById('googleCalendarBtn').target = '_blank';
+
+            document.getElementById('confirmationSection').classList.add('show');
+            showSuccess('Booking confirmed! Your ticket and QR code are ready.');
+        }
+
+        function resetBooking() {
+            if (currentEmail && bookings[currentEmail]) {
+                db.collection('bookings').doc(currentEmail).delete();
+            }
+            selectedSlot = null;
+            document.getElementById('confirmationSection').classList.remove('show');
+            document.getElementById('calendarSection').style.display = 'none';
+            document.getElementById('emailInput').value = '';
+            document.getElementById('emailInput').disabled = false;
+            document.querySelector('button[onclick="verifyEmail()"]').disabled = false;
+            currentEmail = '';
+            showSuccess('Booking reset. Enter your email again to continue.');
+        }
+
+        function printConfirmation() {
+            window.print();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => errorDiv.classList.remove('show'), 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+            setTimeout(() => successDiv.classList.remove('show'), 5000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
